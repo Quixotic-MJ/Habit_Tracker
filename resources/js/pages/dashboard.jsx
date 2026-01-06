@@ -21,14 +21,15 @@ import {
   Droplets,
   Quote,
   LayoutGrid, 
-  List        
+  List,
+  CalendarDays
 } from 'lucide-react';
 
 // --- MAIN COMPONENT ---
 const DashboardBotanical = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeDay, setActiveDay] = useState(24);
-  const [viewMode, setViewMode] = useState('routine'); // 'routine' or 'grid'
+  const [viewMode, setViewMode] = useState('routine'); // 'routine' | 'calendar'
   const [expandedHabit, setExpandedHabit] = useState(null);
   const [selectedMood, setSelectedMood] = useState(null);
   const [gratitude, setGratitude] = useState('');
@@ -37,6 +38,20 @@ const DashboardBotanical = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '' });
+
+  // Mock Date Data
+  const weekDays = [
+      { num: 22, name: 'Sunday' },
+      { num: 23, name: 'Monday' },
+      { num: 24, name: 'Tuesday' },
+      { num: 25, name: 'Wednesday' },
+      { num: 26, name: 'Thursday' },
+      { num: 27, name: 'Friday' },
+      { num: 28, name: 'Saturday' },
+  ];
+
+  // Get current active day name
+  const activeDayName = weekDays.find(d => d.num === activeDay)?.name || 'Today';
 
   // Mock Data
   const [habits, setHabits] = useState([
@@ -58,11 +73,43 @@ const DashboardBotanical = () => {
     setHabits(habits.map(h => {
       if (h.id === id) {
         const newStatus = h.status === 'completed' ? 'pending' : 'completed';
+        const newHistory = [...h.history];
+        // In a real app, you'd find the index corresponding to "today"
+        // Here we assume the last index is today for simplicity in this mock
+        const todayIndex = newHistory.length - 1; 
+        newHistory[todayIndex] = newStatus === 'completed' ? 1 : 0; 
+        
         if (newStatus === 'completed') showToast("Routine completed.");
-        return { ...h, status: newStatus };
+        return { ...h, status: newStatus, history: newHistory };
       }
       return h;
     }));
+  };
+
+  const toggleHistoryItem = (habitId, historyIndex) => {
+      setHabits(habits.map(h => {
+          if (h.id === habitId) {
+              const newHistory = [...h.history];
+              
+              // We are displaying the LAST 7 items. 
+              // We need to map the clicked index (0-6 in display) back to the actual history array.
+              // Display index 0 = History index (length - 7)
+              // Display index 6 = History index (length - 1)
+              const startIndex = newHistory.length - 7;
+              const actualIndex = startIndex + historyIndex;
+
+              newHistory[actualIndex] = newHistory[actualIndex] === 1 ? 0 : 1;
+              
+              // If we toggled "Today" (the very last item), update main status
+              let newStatus = h.status;
+              if (actualIndex === newHistory.length - 1) {
+                  newStatus = newHistory[actualIndex] === 1 ? 'completed' : 'pending';
+              }
+              
+              return { ...h, history: newHistory, status: newStatus };
+          }
+          return h;
+      }));
   };
 
   const toggleSkip = (id) => {
@@ -136,13 +183,14 @@ const DashboardBotanical = () => {
     );
   };
 
-  const renderGridView = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 animate-fade-in-up">
+  const renderCalendarView = () => (
+    <div className="grid grid-cols-1 gap-4 mb-10 animate-fade-in-up">
         {habits.map(habit => (
-            <HabitGridCard 
+            <HabitCalendarCard 
                 key={habit.id}
                 habit={habit}
-                onComplete={() => toggleComplete(habit.id)}
+                activeDay={activeDay}
+                onToggleHistory={(index) => toggleHistoryItem(habit.id, index)}
             />
         ))}
         {habits.length === 0 && (
@@ -190,26 +238,43 @@ const DashboardBotanical = () => {
           {/* HEADER */}
           <div className="relative z-10 p-6 md:p-12 pb-2 md:pb-4">
               <div className="flex justify-between items-start mb-6">
-                  <div>
-                      <span className="block text-xs md:text-sm font-sans tracking-widest uppercase text-[#9C9C9C] mb-1">Daily Log</span>
-                      <h1 className="text-3xl sm:text-4xl md:text-5xl text-[#2C3628] leading-tight font-medium">October {activeDay}</h1>
-                  </div>
+                  
+                  {/* --- CONDITIONAL HEADER LOGIC --- */}
+                  {viewMode === 'routine' ? (
+                      <div className="animate-fade-in-up">
+                          <span className="block text-xs md:text-sm font-sans tracking-widest uppercase text-[#9C9C9C] mb-1">
+                              October 2023
+                          </span>
+                          <h1 className="text-3xl sm:text-4xl md:text-5xl text-[#2C3628] leading-tight font-medium">
+                              {activeDayName}
+                          </h1>
+                      </div>
+                  ) : (
+                      <div className="animate-fade-in-up">
+                          <span className="block text-xs md:text-sm font-sans tracking-widest uppercase text-[#9C9C9C] mb-1">
+                              Consistency Overview
+                          </span>
+                          <h1 className="text-3xl sm:text-4xl md:text-5xl text-[#2C3628] leading-tight font-medium">
+                              Last 7 Days
+                          </h1>
+                      </div>
+                  )}
                   
                   <div className="flex gap-3">
                       <div className="flex bg-[#F2F0E9] rounded-full p-1 border border-[#E6E4DC]">
                           <button 
                             onClick={() => setViewMode('routine')}
                             className={`p-2 rounded-full transition-all ${viewMode === 'routine' ? 'bg-white shadow-sm text-[#2C3628]' : 'text-[#9C9C9C] hover:text-[#2C3628]'}`}
-                            title="Routine View"
+                            title="Routine Checklist"
                           >
                               <List size={18} />
                           </button>
                           <button 
-                            onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-full transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-[#2C3628]' : 'text-[#9C9C9C] hover:text-[#2C3628]'}`}
-                            title="Consistency Grid"
+                            onClick={() => setViewMode('calendar')}
+                            className={`p-2 rounded-full transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-[#2C3628]' : 'text-[#9C9C9C] hover:text-[#2C3628]'}`}
+                            title="Calendar Checklist"
                           >
-                              <LayoutGrid size={18} />
+                              <CalendarDays size={18} />
                           </button>
                       </div>
 
@@ -223,8 +288,9 @@ const DashboardBotanical = () => {
                   </div>
               </div>
 
+              {/* QUOTE: Only visible in Routine View */}
               {viewMode === 'routine' && (
-                  <div className="mb-8 p-6 bg-[#F4F6F4] rounded-2xl border border-[#E6E4DC]/50 flex items-start gap-4">
+                  <div className="mb-8 p-6 bg-[#F4F6F4] rounded-2xl border border-[#E6E4DC]/50 flex items-start gap-4 animate-fade-in-up">
                       <Quote size={20} className="text-[#8A9A85] shrink-0 mt-1" />
                       <div>
                           <p className="font-serif italic text-[#4A4A4A] text-lg leading-relaxed">
@@ -235,34 +301,38 @@ const DashboardBotanical = () => {
                   </div>
               )}
 
-              <div className="flex justify-between items-center border-b border-[#E6E4DC] pb-6 md:pb-8 overflow-x-auto no-scrollbar gap-3 mask-linear-fade">
-                  {[22, 23, 24, 25, 26, 27, 28].map((day) => {
-                      const hasActivity = day < 25; 
-                      return (
-                      <button 
-                          key={day}
-                          onClick={() => setActiveDay(day)}
-                          className={`flex flex-col items-center justify-center w-14 h-20 md:w-16 md:h-24 rounded-2xl transition-all shrink-0 relative ${
-                              activeDay === day 
-                              ? 'bg-[#2C3628] text-[#FDFCF8] shadow-lg scale-105 transform -translate-y-1' 
-                              : 'bg-white border border-[#E6E4DC] text-[#9C9C9C] hover:border-[#DCE3DA]'
-                          }`}
-                      >
-                          <span className="text-[9px] md:text-[10px] font-sans font-bold uppercase tracking-wider mb-1">Oct</span>
-                          <span className="text-lg md:text-2xl font-serif">{day}</span>
-                          {hasActivity && activeDay !== day && (
-                              <div className="w-1 h-1 rounded-full bg-[#DCE3DA] absolute bottom-3"></div>
-                          )}
-                      </button>
-                  )})}
-              </div>
+              {/* DAY STRIP: Only visible in Routine View */}
+              {viewMode === 'routine' && (
+                  <div className="flex justify-between items-center border-b border-[#E6E4DC] pb-6 md:pb-8 overflow-x-auto no-scrollbar gap-3 mask-linear-fade animate-fade-in-up">
+                      {weekDays.map((dayObj) => {
+                          const hasActivity = dayObj.num < 25; 
+                          return (
+                          <button 
+                              key={dayObj.num}
+                              onClick={() => setActiveDay(dayObj.num)}
+                              className={`flex flex-col items-center justify-center w-14 h-20 md:w-16 md:h-24 rounded-2xl transition-all shrink-0 relative ${
+                                  activeDay === dayObj.num
+                                  ? 'bg-[#2C3628] text-[#FDFCF8] shadow-lg scale-105 transform -translate-y-1' 
+                                  : 'bg-white border border-[#E6E4DC] text-[#9C9C9C] hover:border-[#DCE3DA]'
+                              }`}
+                          >
+                              <span className="text-[9px] md:text-[10px] font-sans font-bold uppercase tracking-wider mb-1">
+                                  {dayObj.name.substring(0, 3)}
+                              </span>
+                              <span className="text-lg md:text-2xl font-serif">{dayObj.num}</span>
+                              {hasActivity && activeDay !== dayObj.num && (
+                                  <div className="w-1 h-1 rounded-full bg-[#DCE3DA] absolute bottom-3"></div>
+                              )}
+                          </button>
+                      )})}
+                  </div>
+              )}
           </div>
 
           {/* CONTENT AREA */}
           <div className="relative z-10 flex-1 overflow-y-auto px-6 md:px-12 pb-12 scroll-smooth no-scrollbar">
               
-              {/* --- DYNAMIC VIEW RENDERING --- */}
-              {viewMode === 'routine' ? renderRoutineView() : renderGridView()}
+              {viewMode === 'routine' ? renderRoutineView() : renderCalendarView()}
 
               <button 
                   onClick={() => setIsAddModalOpen(true)}
@@ -271,7 +341,7 @@ const DashboardBotanical = () => {
                   <Plus size={16} className="group-hover:scale-110 transition-transform"/> Add Routine
               </button>
 
-              {/* FOOTER / REFLECTION (Now at the bottom of the scrollable area) */}
+              {/* FOOTER */}
               <div className="bg-[#F8F7F2] rounded-3xl p-6 md:p-8 border border-[#E6E4DC]/50 mb-6">
                   <div className="flex flex-col gap-6 mb-8 border-b border-[#E6E4DC] border-dashed pb-6">
                       <h3 className="font-sans text-xs font-bold uppercase text-[#9C9C9C]">Daily Weather</h3>
@@ -341,51 +411,78 @@ const DashboardBotanical = () => {
 
 // --- SUB-COMPONENTS ---
 
-// 1. HabitGridCard
-const HabitGridCard = ({ habit, onComplete }) => {
-    const history = habit.history || Array(14).fill(0).map(() => Math.random() > 0.5 ? 1 : 0);
-    const isCompleted = habit.status === 'completed';
+// 1. HabitCalendarCard (The "Calendar Checklist" View)
+const HabitCalendarCard = ({ habit, activeDay, onToggleHistory }) => {
+    // Generate dates for the last 7 days only
+    const history = habit.history || Array(14).fill(0);
+    // Slice to get only the last 7 items
+    const last7Days = history.slice(-7);
+    
+    // Calculate streak
+    let streak = 0;
+    for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i] === 1) streak++;
+        else break;
+    }
+
+    // Days of week symbols for the grid
+    const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return (
-        <div 
-            onClick={onComplete}
-            className={`group p-5 rounded-2xl border transition-all duration-300 cursor-pointer flex flex-col justify-between h-40 relative overflow-hidden ${
-                isCompleted 
-                ? 'bg-[#2C3628] border-[#2C3628] text-[#FDFCF8] shadow-md' 
-                : 'bg-white border-[#E6E4DC] hover:border-[#DCE3DA] hover:shadow-sm hover:-translate-y-1'
-            }`}
-        >
-            <div className="flex justify-between items-start z-10">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                    isCompleted ? 'bg-[#FDFCF8]/10 text-[#FDFCF8]' : 'bg-[#F2F0E9] text-[#9C9C9C]'
+        <div className="bg-white p-5 rounded-3xl border border-[#E6E4DC] hover:border-[#DCE3DA] hover:shadow-sm transition-all duration-300 flex flex-col md:flex-row gap-6 md:items-center">
+            
+            {/* Habit Info */}
+            <div className="flex items-center gap-4 min-w-[200px]">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
+                    streak > 0 ? 'bg-[#DCE3DA] text-[#2C3628]' : 'bg-[#F2F0E9] text-[#9C9C9C]'
                 }`}>
-                    <HabitIcon name={habit.icon} size={18} />
+                    <HabitIcon name={habit.icon} size={22} />
                 </div>
-                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
-                        isCompleted 
-                        ? 'bg-[#FDFCF8] border-[#FDFCF8] text-[#2C3628]' 
-                        : 'border-[#E6E4DC] text-transparent'
-                    }`}>
-                    <Check size={14} />
+                <div>
+                    <h3 className="text-lg font-medium text-[#2C3628]">{habit.title}</h3>
+                    <div className="flex items-center gap-2 text-xs font-sans font-bold uppercase text-[#9C9C9C]">
+                        <span>{habit.routineType}</span>
+                        <span className="w-1 h-1 rounded-full bg-[#E6E4DC]"></span>
+                        <span className={streak > 0 ? 'text-[#8A9A85]' : ''}>{streak} Day Streak</span>
+                    </div>
                 </div>
             </div>
 
-            <div className="z-10">
-                <h3 className={`text-lg font-medium mb-3 ${isCompleted ? 'text-[#FDFCF8]' : 'text-[#2C3628]'}`}>
-                    {habit.title}
-                </h3>
-                <div className="flex gap-1">
-                    {history.slice(-10).map((val, i) => (
-                        <div 
-                            key={i} 
-                            className={`h-2 flex-1 rounded-full transition-colors ${
-                                val 
-                                ? (isCompleted ? 'bg-[#FDFCF8]/60' : 'bg-[#2C3628]') 
-                                : (isCompleted ? 'bg-[#FDFCF8]/10' : 'bg-[#E6E4DC]')
-                            }`}
-                        ></div>
-                    ))}
-                    <div className={`h-2 flex-1 rounded-full ${isCompleted ? 'bg-[#FDFCF8]' : 'bg-[#E6E4DC] border border-[#2C3628]'}`}></div>
+            {/* Calendar Grid (Last 7 days) */}
+            <div className="flex-1 overflow-x-auto no-scrollbar">
+                <div className="flex gap-2 min-w-max pb-1 justify-between md:justify-end">
+                    {last7Days.map((val, i) => {
+                        // Offset logic: i goes from 0 to 6. 
+                        // 0 = 6 days ago, 6 = Today.
+                        const daysAgo = 6 - i;
+                        const dateNum = activeDay - daysAgo;
+                        
+                        // Mock day of week index (activeDay 24 = Tuesday = 2)
+                        // If Today is Tuesday (2), then 6 days ago was Wednesday (3)
+                        // Formula: (CurrentDayIndex - daysAgo + 7) % 7
+                        const todayIndex = 2; // Tuesday
+                        const dayIndex = (todayIndex - daysAgo + 7) % 7; 
+                        
+                        const isToday = i === 6;
+
+                        return (
+                            <div key={i} className="flex flex-col items-center gap-2">
+                                <span className="text-[9px] font-sans font-bold text-[#D1D1D1]">{daysOfWeek[dayIndex]}</span>
+                                <button 
+                                    onClick={() => onToggleHistory(i)}
+                                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-serif transition-all duration-200 ${
+                                        val 
+                                        ? 'bg-[#2C3628] text-white shadow-sm' 
+                                        : isToday 
+                                            ? 'border-2 border-[#DCE3DA] text-[#2C3628]' 
+                                            : 'bg-[#F9F8F6] text-[#D1D1D1] hover:bg-[#F2F0E9]'
+                                    }`}
+                                >
+                                    {dateNum > 0 ? dateNum : 30 + dateNum}
+                                </button>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>
