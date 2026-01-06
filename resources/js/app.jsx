@@ -1,7 +1,7 @@
 import './bootstrap.js';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import Boot from './pages/boot.jsx';
+import Boot from './pages/loadingBoot.jsx';
 import Dashboard from './pages/dashboard.jsx';
 
 
