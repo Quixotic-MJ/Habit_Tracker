@@ -1,27 +1,116 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, 
   Coffee, 
   Sun, 
   Moon, 
-  Leaf,
+  Leaf, 
   Plus, 
   Check, 
-  X,
-  Trash2,
-  Settings,
-  Droplets,
-  Wind,
-  Clock,
-  Tag,
-  Calendar,
-  AlignLeft,
+  X, 
+  Trash2, 
+  Settings, 
+  Clock, 
+  Tag, 
+  Calendar, 
+  AlignLeft, 
   Timer,
-  Cloud
+  Cloud,
+  Wind,
+  Droplets,
+  Quote,
+  Loader2
 } from 'lucide-react';
+
+// --- NEW COMPONENT: LOADING BOOT SCREEN ---
+const LoadingBoot = ({ onFinished }) => {
+  const [quote, setQuote] = useState({ text: "", author: "" });
+  const [opacity, setOpacity] = useState(100);
+
+  // A collection of calm, stoic, or botanical quotes
+  const quotes = [
+    { text: "Nature does not hurry, yet everything is accomplished.", author: "Lao Tzu" },
+    { text: "Adopt the pace of nature: her secret is patience.", author: "Ralph Waldo Emerson" },
+    { text: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci" },
+    { text: "Act without expectation.", author: "Lao Tzu" },
+    { text: "The grass grows by itself.", author: "Osho" },
+    { text: "Do less, but with more focus.", author: "Zen Proverb" }
+  ];
+
+  useEffect(() => {
+    // 1. Select Random Quote
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+    setQuote(randomQuote);
+
+    // 2. Simulate Loading Time (e.g., fetching data)
+    const timer = setTimeout(() => {
+      setOpacity(0); // Start fade out
+      setTimeout(onFinished, 1000); // Wait for fade to finish before unmounting
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] bg-[#F2F0E9] flex flex-col items-center justify-center transition-opacity duration-1000 ease-in-out"
+      style={{ opacity: opacity / 100 }}
+    >
+      {/* Background Texture */}
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+
+      {/* Breathing Icon */}
+      <div className="mb-8 relative">
+        <div className="absolute inset-0 bg-[#DCE3DA] rounded-full blur-xl animate-pulse opacity-50"></div>
+        <Leaf size={48} className="text-[#2C3628] relative z-10 animate-bounce-slow" />
+      </div>
+
+      {/* Quote */}
+      <div className="max-w-md text-center px-6 animate-fade-in-up">
+        <p className="font-serif text-xl md:text-2xl text-[#2C3628] italic leading-relaxed mb-3">
+          "{quote.text}"
+        </p>
+        <p className="font-sans text-xs font-bold uppercase text-[#9C9C9C] tracking-widest">
+          — {quote.author}
+        </p>
+      </div>
+
+      {/* Subtle Progress Line */}
+      <div className="absolute bottom-12 w-32 h-1 bg-[#E6E4DC] rounded-full overflow-hidden">
+        <div className="h-full bg-[#8A9A85] animate-progress-fill rounded-full"></div>
+      </div>
+
+      {/* Custom Styles for this component only */}
+      <style>{`
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-5px) scale(1.05); }
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 3s infinite ease-in-out;
+        }
+        @keyframes progress-fill {
+          0% { width: 0%; }
+          100% { width: 100%; }
+        }
+        .animate-progress-fill {
+          animation: progress-fill 2.5s ease-out forwards;
+        }
+        @keyframes fade-in-up {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 1s ease-out forwards;
+        }
+      `}</style>
+    </div>
+  );
+};
 
 // --- MAIN COMPONENT ---
 const DashboardBotanical = () => {
+  const [isLoading, setIsLoading] = useState(true);
   const [activeDay, setActiveDay] = useState(24);
   const [expandedHabit, setExpandedHabit] = useState(null);
   const [selectedMood, setSelectedMood] = useState(null);
@@ -114,7 +203,7 @@ const DashboardBotanical = () => {
                 ))
             ) : (
                 <div className="text-center p-6 border border-dashed border-[#E6E4DC] rounded-2xl text-[#B0B0B0] text-sm italic bg-[#FBFBF9]">
-                    No routines for this time yet.
+                    No routines scheduled.
                 </div>
             )}
         </div>
@@ -122,136 +211,197 @@ const DashboardBotanical = () => {
     );
   };
 
+  // CSS for scrollbars + Leaf Shadow Effect
+  const styles = `
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Simulated Plant Shadow */
+    .leaf-shadow {
+        background: radial-gradient(circle at 0% 0%, rgba(44, 54, 40, 0.03) 0%, transparent 50%),
+                    radial-gradient(circle at 100% 0%, rgba(44, 54, 40, 0.02) 0%, transparent 40%);
+    }
+  `;
+
   return (
-    <div className="min-h-screen bg-[#F2F0E9] text-[#4A4A4A] font-serif p-2 sm:p-4 md:p-8 selection:bg-[#DCE3DA]">
+    <>
+      {isLoading && <LoadingBoot onFinished={() => setIsLoading(false)} />}
       
-      {/* Main Container "Notebook" */}
-      <div className="w-full max-w-3xl mx-auto bg-[#FDFCF8] min-h-[85vh] md:min-h-[90vh] rounded-3xl md:rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.05)] border border-[#E6E4DC] relative overflow-hidden flex flex-col transition-all duration-300">
+      <div className="min-h-screen bg-[#F2F0E9] text-[#4A4A4A] font-serif p-2 sm:p-4 md:p-8 selection:bg-[#DCE3DA] flex justify-center items-start">
+        <style>{styles}</style>
         
-        {/* Subtle Grain Texture */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+        {/* Background Decor (Plant Shadows) */}
+        <div className="fixed inset-0 pointer-events-none leaf-shadow z-0"></div>
 
-        {/* HEADER */}
-        <div className="relative z-10 p-6 md:p-12 pb-4 md:pb-6">
-            <div className="flex justify-between items-start mb-6 md:mb-8">
-                <div>
-                    <span className="block text-xs md:text-sm font-sans tracking-widest uppercase text-[#9C9C9C] mb-1">Daily Log</span>
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl text-[#2C3628] leading-tight">October {activeDay}</h1>
-                </div>
-                {/* Settings / Progress Trigger */}
-                <button 
-                    onClick={() => setIsSettingsModalOpen(true)}
-                    className="w-12 h-12 md:w-14 md:h-14 rounded-full border border-[#E6E4DC] flex items-center justify-center bg-white shadow-sm hover:border-[#DCE3DA] hover:scale-105 transition-all group shrink-0"
-                >
-                   <span className="font-sans font-bold text-[#2C3628] text-xs md:text-sm group-hover:hidden">{calculateProgress()}%</span>
-                   <Settings size={20} className="hidden group-hover:block text-[#9C9C9C]" />
-                </button>
-            </div>
+        {/* Main Container "Notebook" */}
+        <div className="w-full max-w-4xl bg-[#FDFCF8] min-h-[85vh] md:min-h-[92vh] rounded-3xl md:rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-[#E6E4DC] relative flex flex-col transition-all duration-300 z-10 my-auto">
+          
+          {/* Notebook Tabs (Right Side - Visual Only) */}
+          <div className="hidden lg:block absolute -right-3 top-24 space-y-2">
+              <div className="w-4 h-12 bg-[#2C3628] rounded-r-lg shadow-sm" title="Today"></div>
+              <div className="w-4 h-12 bg-[#E6E4DC] rounded-r-lg shadow-sm" title="Calendar"></div>
+              <div className="w-4 h-12 bg-[#E6E4DC] rounded-r-lg shadow-sm" title="Journal"></div>
+          </div>
 
-            {/* Week Strip */}
-            <div className="flex justify-between items-center border-b border-[#E6E4DC] pb-6 md:pb-8 overflow-x-auto no-scrollbar gap-2 mask-linear-fade">
-                {[22, 23, 24, 25, 26, 27, 28].map((day) => (
-                    <button 
-                        key={day}
-                        onClick={() => setActiveDay(day)}
-                        className={`flex flex-col items-center justify-center w-12 h-16 md:w-14 md:h-20 rounded-2xl transition-all shrink-0 ${
-                            activeDay === day 
-                            ? 'bg-[#2C3628] text-[#FDFCF8] shadow-md scale-105' 
-                            : 'bg-white border border-[#E6E4DC] text-[#9C9C9C] hover:border-[#DCE3DA]'
-                        }`}
-                    >
-                        <span className="text-[9px] md:text-[10px] font-sans font-bold uppercase tracking-wider mb-1">Oct</span>
-                        <span className="text-lg md:text-xl font-serif">{day}</span>
-                    </button>
-                ))}
-            </div>
+          {/* Subtle Grain Texture */}
+          <div className="absolute inset-0 opacity-[0.04] pointer-events-none z-0 rounded-3xl md:rounded-[2.5rem]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+
+          {/* HEADER */}
+          <div className="relative z-10 p-6 md:p-12 pb-2 md:pb-4">
+              <div className="flex justify-between items-start mb-6">
+                  <div>
+                      <span className="block text-xs md:text-sm font-sans tracking-widest uppercase text-[#9C9C9C] mb-1">Daily Log</span>
+                      <h1 className="text-3xl sm:text-4xl md:text-5xl text-[#2C3628] leading-tight font-medium">October {activeDay}</h1>
+                  </div>
+                  {/* Settings / Progress Trigger */}
+                  <button 
+                      onClick={() => setIsSettingsModalOpen(true)}
+                      className="w-12 h-12 md:w-14 md:h-14 rounded-full border border-[#E6E4DC] flex items-center justify-center bg-white shadow-sm hover:border-[#DCE3DA] hover:scale-105 transition-all group shrink-0"
+                  >
+                    <span className="font-sans font-bold text-[#2C3628] text-xs md:text-sm group-hover:hidden">{calculateProgress()}%</span>
+                    <Settings size={20} className="hidden group-hover:block text-[#9C9C9C]" />
+                  </button>
+              </div>
+
+              {/* Quote / Daily Focus Card */}
+              <div className="mb-8 p-6 bg-[#F4F6F4] rounded-2xl border border-[#E6E4DC]/50 flex items-start gap-4">
+                  <Quote size={20} className="text-[#8A9A85] shrink-0 mt-1" />
+                  <div>
+                      <p className="font-serif italic text-[#4A4A4A] text-lg leading-relaxed">
+                          "Do not spoil what you have by desiring what you have not."
+                      </p>
+                      <p className="text-xs font-sans font-bold uppercase text-[#9C9C9C] mt-2 tracking-wide">— Epicurus</p>
+                  </div>
+              </div>
+
+              {/* Week Strip */}
+              <div className="flex justify-between items-center border-b border-[#E6E4DC] pb-6 md:pb-8 overflow-x-auto no-scrollbar gap-3 mask-linear-fade">
+                  {[22, 23, 24, 25, 26, 27, 28].map((day) => {
+                      const hasActivity = day < 25; 
+                      return (
+                      <button 
+                          key={day}
+                          onClick={() => setActiveDay(day)}
+                          className={`flex flex-col items-center justify-center w-14 h-20 md:w-16 md:h-24 rounded-2xl transition-all shrink-0 relative ${
+                              activeDay === day 
+                              ? 'bg-[#2C3628] text-[#FDFCF8] shadow-lg scale-105 transform -translate-y-1' 
+                              : 'bg-white border border-[#E6E4DC] text-[#9C9C9C] hover:border-[#DCE3DA]'
+                          }`}
+                      >
+                          <span className="text-[9px] md:text-[10px] font-sans font-bold uppercase tracking-wider mb-1">Oct</span>
+                          <span className="text-lg md:text-2xl font-serif">{day}</span>
+                          {/* Activity Dot */}
+                          {hasActivity && activeDay !== day && (
+                              <div className="w-1 h-1 rounded-full bg-[#DCE3DA] absolute bottom-3"></div>
+                          )}
+                      </button>
+                  )})}
+              </div>
+          </div>
+
+          {/* CONTENT AREA */}
+          <div className="relative z-10 flex-1 overflow-y-auto px-6 md:px-12 pb-12 scroll-smooth no-scrollbar">
+              
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                  {/* Main Habits Column */}
+                  <div className="lg:col-span-8">
+                      {renderSection("Morning Ritual", "morning")}
+                      {renderSection("Afternoon Focus", "afternoon")}
+                      {renderSection("Evening Wind Down", "evening")}
+
+                      <button 
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="w-full py-4 md:py-5 rounded-2xl border-2 border-dashed border-[#E6E4DC] text-[#9C9C9C] flex items-center justify-center gap-2 hover:bg-[#F2F0E9] hover:border-[#DCE3DA] hover:text-[#8A9A85] transition-all font-sans text-xs font-bold uppercase tracking-wide group mb-12"
+                      >
+                          <Plus size={16} className="group-hover:scale-110 transition-transform"/> Add Routine
+                      </button>
+                  </div>
+
+                  {/* Right Rail (Desktop Only) */}
+                  <div className="lg:col-span-4 flex flex-col gap-6">
+                      {/* FOOTER / REFLECTION */}
+                      <div className="bg-[#F8F7F2] rounded-3xl p-6 md:p-8 border border-[#E6E4DC]/50 sticky top-4">
+                          <div className="flex flex-col gap-6 mb-8 border-b border-[#E6E4DC] border-dashed pb-6">
+                              <h3 className="font-sans text-xs font-bold uppercase text-[#9C9C9C]">Daily Weather</h3>
+                              <div className="flex justify-between">
+                                  {[
+                                      {id: 'sun', icon: <Sun size={20}/>}, 
+                                      {id: 'cloud', icon: <Cloud size={20}/>}, 
+                                      {id: 'rain', icon: <Wind size={20}/>}
+                                  ].map((m) => (
+                                      <button 
+                                          key={m.id}
+                                          onClick={() => setSelectedMood(m.id)}
+                                          className={`transition-all p-3 rounded-xl border ${
+                                              selectedMood === m.id 
+                                              ? 'text-[#2C3628] bg-white border-[#E6E4DC] shadow-sm' 
+                                              : 'text-[#D1D1D1] border-transparent hover:bg-[#E6E4DC]/30'
+                                          }`}
+                                      >
+                                          {m.icon}
+                                      </button>
+                                  ))}
+                              </div>
+                          </div>
+                          <div>
+                              <h3 className="font-sans text-xs font-bold uppercase text-[#9C9C9C] mb-3">Gratitude</h3>
+                              <div className="relative">
+                                  <input 
+                                      type="text"
+                                      value={gratitude}
+                                      onChange={(e) => setGratitude(e.target.value)}
+                                      className="w-full bg-white rounded-xl border border-[#E6E4DC] text-[#4A4A4A] font-serif text-base py-3 px-4 focus:outline-none focus:border-[#8A9A85] placeholder:text-[#D1D1D1] transition-colors shadow-sm"
+                                  />
+                                  {!gratitude && (
+                                      <span className="absolute top-3.5 left-4 text-[#D1D1D1] pointer-events-none font-serif italic text-sm">
+                                          One small thing...
+                                      </span>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          {/* --- MODALS --- */}
+          
+          {/* 1. ADD HABIT MODAL */}
+          <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="New Entry">
+              <AddHabitForm onSubmit={handleAddHabit} onCancel={() => setIsAddModalOpen(false)} />
+          </Modal>
+
+          {/* 2. SETTINGS MODAL */}
+          <Modal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title="My Focus">
+              <div className="space-y-6">
+                  <div>
+                      <label className="block font-sans text-xs font-bold uppercase text-[#9C9C9C] mb-2">Weekly Intention</label>
+                      <textarea 
+                          className="w-full bg-[#F8F7F2] border border-[#E6E4DC] rounded-xl p-4 text-[#4A4A4A] font-serif focus:outline-none focus:border-[#DCE3DA]"
+                          rows={3}
+                          defaultValue="Focus on sleep quality and staying hydrated."
+                      />
+                  </div>
+                  <div className="pt-4 border-t border-[#E6E4DC]">
+                      <div className="flex justify-between items-center mb-2">
+                          <span className="text-[#4A4A4A] font-serif">Notifications</span>
+                          <div className="w-10 h-6 bg-[#DCE3DA] rounded-full relative cursor-pointer">
+                              <div className="w-4 h-4 bg-white rounded-full absolute top-1 left-5 shadow-sm"></div>
+                          </div>
+                      </div>
+                      <p className="text-xs text-[#9C9C9C]">Gentle reminders at morning and evening.</p>
+                  </div>
+              </div>
+          </Modal>
+
+          {/* 3. TOAST NOTIFICATION */}
+          <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-[#2C3628] text-white px-6 py-3 rounded-full shadow-lg transition-all duration-300 flex items-center gap-2 z-[60] ${toast.show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+              <Check size={14} /> <span className="text-sm font-sans font-medium">{toast.message}</span>
+          </div>
+
         </div>
-
-        {/* CONTENT AREA */}
-        <div className="relative z-10 flex-1 overflow-y-auto px-6 md:px-12 pb-12 scroll-smooth">
-            {renderSection("Morning Ritual", "morning")}
-            {renderSection("Afternoon Focus", "afternoon")}
-            {renderSection("Evening Wind Down", "evening")}
-
-            <button 
-                onClick={() => setIsAddModalOpen(true)}
-                className="w-full py-4 md:py-5 rounded-2xl border-2 border-dashed border-[#E6E4DC] text-[#9C9C9C] flex items-center justify-center gap-2 hover:bg-[#F2F0E9] hover:border-[#DCE3DA] hover:text-[#8A9A85] transition-all font-sans text-xs font-bold uppercase tracking-wide group mb-12"
-            >
-                <Plus size={16} className="group-hover:scale-110 transition-transform"/> Add Routine
-            </button>
-
-            {/* FOOTER */}
-            <div className="bg-[#F8F7F2] rounded-3xl p-6 md:p-8 border border-[#E6E4DC]/50">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-[#E6E4DC] border-dashed pb-6">
-                    <h3 className="font-sans text-xs font-bold uppercase text-[#9C9C9C]">Daily Weather</h3>
-                    <div className="flex gap-4">
-                        {[
-                            {id: 'sun', icon: <Sun size={20}/>}, 
-                            {id: 'cloud', icon: <Cloud size={20}/>}, 
-                            {id: 'rain', icon: <Wind size={20}/>}
-                        ].map((m) => (
-                            <button 
-                                key={m.id}
-                                onClick={() => setSelectedMood(m.id)}
-                                className={`transition-all p-2 rounded-full hover:bg-[#E6E4DC]/30 ${
-                                    selectedMood === m.id ? 'text-[#2C3628] scale-110' : 'text-[#D1D1D1] hover:text-[#8A9A85]'
-                                }`}
-                            >
-                                {m.icon}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div>
-                    <h3 className="font-sans text-xs font-bold uppercase text-[#9C9C9C] mb-2">Gratitude Footnote</h3>
-                    <input 
-                        type="text"
-                        value={gratitude}
-                        onChange={(e) => setGratitude(e.target.value)}
-                        placeholder="One small thing I'm grateful for..."
-                        className="w-full bg-transparent border-b border-[#E6E4DC] text-[#4A4A4A] font-serif text-base md:text-lg py-2 focus:outline-none focus:border-[#8A9A85] placeholder:text-[#D1D1D1] transition-colors"
-                    />
-                </div>
-            </div>
-        </div>
-
-        {/* --- MODALS --- */}
-        
-        {/* 1. ADD HABIT MODAL */}
-        <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="New Entry">
-            <AddHabitForm onSubmit={handleAddHabit} onCancel={() => setIsAddModalOpen(false)} />
-        </Modal>
-
-        {/* 2. SETTINGS MODAL */}
-        <Modal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title="My Focus">
-            <div className="space-y-6">
-                <div>
-                    <label className="block font-sans text-xs font-bold uppercase text-[#9C9C9C] mb-2">Weekly Intention</label>
-                    <textarea 
-                        className="w-full bg-[#F8F7F2] border border-[#E6E4DC] rounded-xl p-4 text-[#4A4A4A] font-serif focus:outline-none focus:border-[#DCE3DA]"
-                        rows={3}
-                        defaultValue="Focus on sleep quality and staying hydrated."
-                    />
-                </div>
-                <div className="pt-4 border-t border-[#E6E4DC]">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-[#4A4A4A] font-serif">Notifications</span>
-                        <div className="w-10 h-6 bg-[#DCE3DA] rounded-full relative cursor-pointer">
-                            <div className="w-4 h-4 bg-white rounded-full absolute top-1 left-5 shadow-sm"></div>
-                        </div>
-                    </div>
-                    <p className="text-xs text-[#9C9C9C]">Gentle reminders at morning and evening.</p>
-                </div>
-            </div>
-        </Modal>
-
-        {/* 3. TOAST NOTIFICATION */}
-        <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-[#2C3628] text-white px-6 py-3 rounded-full shadow-lg transition-all duration-300 flex items-center gap-2 z-[60] ${toast.show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
-            <Check size={14} /> <span className="text-sm font-sans font-medium">{toast.message}</span>
-        </div>
-
       </div>
-    </div>
+    </>
   );
 };
 
@@ -270,7 +420,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
                         <X size={20} />
                     </button>
                 </div>
-                <div className="p-6 md:p-8 overflow-y-auto">
+                <div className="p-6 md:p-8 overflow-y-auto no-scrollbar">
                     {children}
                 </div>
             </div>
@@ -283,7 +433,7 @@ const AddHabitForm = ({ onSubmit, onCancel }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [time, setTime] = useState('');
-    const [isTimeMode, setIsTimeMode] = useState(true); // true = Clock time, false = Duration
+    const [isTimeMode, setIsTimeMode] = useState(true); 
     const [period, setPeriod] = useState('morning');
     const [routineType, setRoutineType] = useState('Daily');
     const [icon, setIcon] = useState('sun');
