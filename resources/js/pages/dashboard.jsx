@@ -1,68 +1,85 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios'; // Ensure axios is installed or available
 import LoadingBoot from './loadingBoot'; 
 import { 
-  BookOpen, 
-  Coffee, 
-  Sun, 
-  Moon, 
-  Leaf, 
-  Plus, 
-  Check, 
-  X, 
-  Trash2, 
-  Settings, 
-  Clock, 
-  Tag, 
-  Calendar, 
-  AlignLeft, 
-  Timer,
-  Cloud,
-  Wind,
-  Quote,
-  LayoutGrid, 
-  List,
-  CalendarDays,
-  Droplets
+  BookOpen, Coffee, Sun, Moon, Leaf, Plus, Check, X, Trash2, 
+  Settings, Tag, CalendarDays, AlignLeft, Cloud, Wind, Quote, List, Droplets
 } from 'lucide-react';
+
+// --- HELPERS ---
+const formatDate = (date) => date.toISOString().split('T')[0];
+
+const getWeekDays = (referenceDate) => {
+    const days = [];
+    const date = new Date(referenceDate);
+    // Adjust to start of week (Sunday) or just show surrounding days. 
+    // Let's show a rolling window or current week. Here: Current Week (Sun-Sat)
+    const dayOfWeek = date.getDay(); 
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - dayOfWeek);
+
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfWeek);
+        d.setDate(startOfWeek.getDate() + i);
+        days.push({
+            date: formatDate(d),
+            num: d.getDate(),
+            name: d.toLocaleDateString('en-US', { weekday: 'long' }),
+            isToday: formatDate(d) === formatDate(new Date())
+        });
+    }
+    return days;
+};
 
 // --- MAIN COMPONENT ---
 const DashboardBotanical = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [activeDay, setActiveDay] = useState(24);
+  
+  // State: Dates & View
+  const [activeDate, setActiveDate] = useState(formatDate(new Date())); // YYYY-MM-DD
+  const [weekDays, setWeekDays] = useState([]);
   const [viewMode, setViewMode] = useState('routine'); 
   const [expandedHabit, setExpandedHabit] = useState(null);
-  const [selectedMood, setSelectedMood] = useState(null);
-  const [gratitude, setGratitude] = useState('');
   
-  // Theme State (Default: Light)
+  // State: Data
+  const [habits, setHabits] = useState([]);
+  const [dailyLog, setDailyLog] = useState({ mood: null, gratitude: '' });
+  const [settings, setSettings] = useState({});
+
+  // Theme State
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Modal States
+  // Modals & UI
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '' });
 
-  // Mock Date Data
-  const weekDays = [
-      { num: 22, name: 'Sunday' },
-      { num: 23, name: 'Monday' },
-      { num: 24, name: 'Tuesday' },
-      { num: 25, name: 'Wednesday' },
-      { num: 26, name: 'Thursday' },
-      { num: 27, name: 'Friday' },
-      { num: 28, name: 'Saturday' },
-  ];
+  // Debounce for text inputs (Gratitude/Notes)
+  const debounceRef = useRef(null);
 
-  const activeDayName = weekDays.find(d => d.num === activeDay)?.name || 'Today';
+  // --- INITIALIZATION ---
+  
+  useEffect(() => {
+    // Generate week days for the UI strip
+    setWeekDays(getWeekDays(new Date()));
+    fetchDashboard(activeDate);
+  }, [activeDate]);
 
-  // Mock Data
-  const [habits, setHabits] = useState([
-    { id: 1, title: "Morning Yoga", period: "morning", routineType: "Daily", time: "07:00", isTimeMode: true, status: "completed", note: "Felt stiff today.", icon: "sun", history: [1,1,1,0,1,1,1,1,0,1,1,1,1,1] },
-    { id: 2, title: "Hydrate", period: "morning", routineType: "Daily", time: "500ml", isTimeMode: false, status: "pending", note: "", icon: "drop", history: [0,1,0,1,1,0,1,1,1,0,0,1,0,0] },
-    { id: 3, title: "Deep Work", period: "afternoon", routineType: "Daily", time: "2 Hours", isTimeMode: false, status: "skipped", note: "Headache, took a break.", icon: "book", history: [1,1,1,1,1,1,1,1,1,1,1,1,1,0] },
-    { id: 4, title: "Matcha Break", period: "afternoon", routineType: "Daily", time: "15:00", isTimeMode: true, status: "pending", note: "", icon: "coffee", history: [0,0,0,0,1,1,1,0,0,0,0,0,0,0] },
-    { id: 5, title: "Skincare", period: "evening", routineType: "Daily", time: "20 min", isTimeMode: false, status: "pending", note: "", icon: "moon", history: [1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
-  ]);
+  const fetchDashboard = async (date) => {
+    try {
+        // In a real app, ensure you have auth headers configured in axios defaults
+        const response = await axios.get(`/dashboard?date=${date}`);
+        const { habits, dailyLog, settings } = response.data;
+        
+        setHabits(habits);
+        setDailyLog(dailyLog);
+        setSettings(settings); // If you use settings later
+        setIsLoading(false);
+    } catch (error) {
+        console.error("Failed to fetch dashboard:", error);
+        setIsLoading(false);
+    }
+  };
 
   // --- ACTIONS ---
 
@@ -71,60 +88,150 @@ const DashboardBotanical = () => {
     setTimeout(() => setToast({ show: false, message: '' }), 3000);
   };
 
-  const toggleComplete = (id) => {
-    setHabits(habits.map(h => {
-      if (h.id === id) {
-        const newStatus = h.status === 'completed' ? 'pending' : 'completed';
-        const newHistory = [...h.history];
-        newHistory[13] = newStatus === 'completed' ? 1 : 0; 
-        
-        if (newStatus === 'completed') showToast("Routine completed.");
-        return { ...h, status: newStatus, history: newHistory };
-      }
-      return h;
-    }));
+  // Toggle Status: Pending <-> Completed
+  const toggleComplete = async (id) => {
+    // Optimistic Update
+    const habitIndex = habits.findIndex(h => h.id === id);
+    const habit = habits[habitIndex];
+    const newStatus = habit.status === 'completed' ? 'pending' : 'completed';
+    
+    // Update local state immediately for snappy UI
+    const updatedHabits = [...habits];
+    updatedHabits[habitIndex] = { ...habit, status: newStatus };
+    // Also update the last history item (today in context of the array) if viewing today
+    if (activeDate === formatDate(new Date())) {
+        const historyLen = updatedHabits[habitIndex].history.length;
+        updatedHabits[habitIndex].history[historyLen - 1] = newStatus === 'completed' ? 1 : 0;
+    }
+    setHabits(updatedHabits);
+
+    if (newStatus === 'completed') showToast("Routine completed.");
+
+    // API Call
+    try {
+        await axios.post('/entries/toggle', {
+            habit_id: id,
+            date: activeDate,
+            status: newStatus
+        });
+        // Optional: fetchDashboard(activeDate) to ensure sync
+    } catch (error) {
+        console.error("Toggle failed", error);
+        // Revert on error if needed
+    }
   };
 
-  const toggleHistoryItem = (habitId, index) => {
-      setHabits(habits.map(h => {
-          if (h.id === habitId) {
-              const newHistory = [...h.history];
-              newHistory[index] = newHistory[index] === 1 ? 0 : 1;
-              
-              let newStatus = h.status;
-              if (index === 13) {
-                  newStatus = newHistory[index] === 1 ? 'completed' : 'pending';
-              }
-              
-              return { ...h, history: newHistory, status: newStatus };
-          }
-          return h;
-      }));
+  const toggleSkip = async (id) => {
+    const habit = habits.find(h => h.id === id);
+    const newStatus = habit.status === 'skipped' ? 'pending' : 'skipped';
+
+    setHabits(habits.map(h => h.id === id ? { ...h, status: newStatus } : h));
+
+    try {
+        await axios.post('/entries/toggle', {
+            habit_id: id,
+            date: activeDate,
+            status: newStatus
+        });
+    } catch (error) {
+        console.error("Skip failed", error);
+    }
   };
 
-  const toggleSkip = (id) => {
-    setHabits(habits.map(h => {
-        if (h.id === id) {
-          return { ...h, status: h.status === 'skipped' ? 'pending' : 'skipped' };
-        }
-        return h;
-    }));
-  };
-
-  const deleteHabit = (id) => {
+  const deleteHabit = async (id) => {
+      if(!confirm("Are you sure you want to delete this routine?")) return;
+      
       setHabits(habits.filter(h => h.id !== id));
       showToast("Routine removed.");
+
+      try {
+          await axios.delete(`/habits/${id}`);
+      } catch (error) {
+          console.error("Delete failed", error);
+      }
   };
 
-  const toggleExpand = (id) => {
-    setExpandedHabit(expandedHabit === id ? null : id);
+  const saveNote = async (id, note) => {
+      // Local update
+      setHabits(habits.map(h => h.id === id ? { ...h, note } : h));
+      
+      // Debounced API call
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(async () => {
+          try {
+              await axios.post('/entries/note', {
+                  habit_id: id,
+                  date: activeDate,
+                  note: note
+              });
+          } catch (error) {
+              console.error("Save note failed", error);
+          }
+      }, 1000);
   };
 
-  const handleAddHabit = (newHabit) => {
-      const fakeHistory = Array(14).fill(0);
-      setHabits([...habits, { ...newHabit, id: Date.now(), status: 'pending', note: '', history: fakeHistory }]);
-      setIsAddModalOpen(false);
-      showToast("New routine added.");
+  const handleAddHabit = async (newHabitData) => {
+      try {
+          await axios.post('/habits', newHabitData);
+          setIsAddModalOpen(false);
+          showToast("New routine added.");
+          fetchDashboard(activeDate); // Refresh list
+      } catch (error) {
+          console.error("Add failed", error);
+          alert("Failed to add habit. Check console.");
+      }
+  };
+
+  // Toggle specific history item (for the calendar view)
+  const toggleHistoryItem = async (habitId, index) => {
+      // Calculate the specific date for this history index
+      // The backend returns 14 days ending at 'activeDate'.
+      // Index 13 = activeDate. Index 0 = activeDate - 13 days.
+      const habit = habits.find(h => h.id === habitId);
+      if (!habit) return;
+
+      const newHistory = [...habit.history];
+      const currentVal = newHistory[index];
+      const newVal = currentVal === 1 ? 0 : 1;
+      newHistory[index] = newVal;
+
+      // Update Local State
+      setHabits(habits.map(h => h.id === habitId ? { ...h, history: newHistory } : h));
+
+      // Calculate Date string for API
+      const daysAgo = 13 - index;
+      const targetDate = new Date(activeDate);
+      targetDate.setDate(targetDate.getDate() - daysAgo);
+      const targetDateStr = formatDate(targetDate);
+
+      try {
+        await axios.post('/entries/toggle', {
+            habit_id: habitId,
+            date: targetDateStr,
+            status: newVal === 1 ? 'completed' : 'pending'
+        });
+      } catch (error) {
+        console.error("History toggle failed", error);
+      }
+  };
+
+  // Daily Log Actions
+  const updateDailyLog = async (field, value) => {
+      const newLog = { ...dailyLog, [field]: value };
+      setDailyLog(newLog);
+
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(async () => {
+        try {
+            await axios.post('/dailylog', {
+                date: activeDate,
+                mood: field === 'mood' ? value : dailyLog.mood,
+                gratitude: field === 'gratitude' ? value : dailyLog.gratitude
+            });
+        } catch (error) {
+            console.error("Log update failed", error);
+        }
+      }, 500); // 500ms debounce
   };
 
   const calculateProgress = () => {
@@ -134,7 +241,6 @@ const DashboardBotanical = () => {
   };
 
   // --- THEME STYLES ---
-  // We define dynamic classes based on isDarkMode
   const theme = {
       bg: isDarkMode ? 'bg-[#1a1c19]' : 'bg-[#F2F0E9]',
       textPrimary: isDarkMode ? 'text-[#e4e2dd]' : 'text-[#2C3628]',
@@ -181,10 +287,11 @@ const DashboardBotanical = () => {
                     key={habit.id} 
                     habit={habit} 
                     expanded={expandedHabit === habit.id}
-                    onExpand={() => toggleExpand(habit.id)}
+                    onExpand={() => setExpandedHabit(expandedHabit === habit.id ? null : habit.id)}
                     onComplete={() => toggleComplete(habit.id)}
                     onSkip={() => toggleSkip(habit.id)}
                     onDelete={() => deleteHabit(habit.id)}
+                    onUpdateNote={(val) => saveNote(habit.id, val)}
                     theme={theme}
                 /> 
                 ))
@@ -204,7 +311,8 @@ const DashboardBotanical = () => {
             <HabitCalendarCard 
                 key={habit.id}
                 habit={habit}
-                activeDay={activeDay}
+                // We pass the currently selected day to help render dates correctly
+                activeDate={activeDate} 
                 onToggleHistory={(index) => toggleHistoryItem(habit.id, index)}
                 theme={theme}
             />
@@ -228,6 +336,10 @@ const DashboardBotanical = () => {
     .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
   `;
 
+  // Get Name of current Active Day for Header
+  const activeDayObj = weekDays.find(d => d.date === activeDate);
+  const headerTitle = activeDayObj ? activeDayObj.name : 'Today';
+
   return (
     <>
       {isLoading && <LoadingBoot onFinished={() => setIsLoading(false)} />}
@@ -235,65 +347,50 @@ const DashboardBotanical = () => {
       <div className={`min-h-screen font-serif p-2 sm:p-4 md:p-8 flex justify-center items-start transition-colors duration-500 ${theme.bg} ${theme.textPrimary}`}>
         <style>{styles}</style>
         
-        {/* Main Container "Notebook" */}
+        {/* Main Container */}
         <div className={`w-full max-w-4xl min-h-[85vh] md:min-h-[92vh] rounded-3xl md:rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border relative flex flex-col transition-all duration-300 z-10 my-auto ${theme.containerBg} ${theme.border}`}>
           
-          {/* Notebook Tabs */}
+          {/* Tabs (Decoration) */}
           <div className="hidden lg:block absolute -right-3 top-24 space-y-2">
               <div className={`w-4 h-12 rounded-r-lg shadow-sm cursor-pointer ${theme.buttonPrimary}`} title="Today"></div>
               <div className={`w-4 h-12 rounded-r-lg shadow-sm cursor-pointer ${theme.border} bg-current opacity-20`} title="Calendar"></div>
           </div>
 
-          {/* Subtle Grain Texture */}
+          {/* Texture */}
           <div className="absolute inset-0 opacity-[0.04] pointer-events-none z-0 rounded-3xl md:rounded-[2.5rem]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
 
           {/* HEADER */}
           <div className="relative z-10 p-6 md:p-12 pb-2 md:pb-4">
               <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
                   
-                  {/* --- HEADER TITLE --- */}
+                  {/* TITLE */}
                   <div className="animate-fade-in-up">
                       <span className={`block text-xs md:text-sm font-sans tracking-widest uppercase mb-1 ${theme.textSecondary}`}>
-                          {viewMode === 'routine' ? "October 2023" : "Consistency Overview"}
+                          {viewMode === 'routine' ? new Date(activeDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "Consistency Overview"}
                       </span>
                       <h1 className={`text-3xl sm:text-4xl md:text-5xl leading-tight font-medium ${theme.textPrimary}`}>
-                          {viewMode === 'routine' ? activeDayName : "Last 7 Days"}
+                          {viewMode === 'routine' ? headerTitle : "Last 14 Days"}
                       </h1>
                   </div>
                   
                   <div className="flex gap-3 items-center">
                       {/* View Switcher */}
                       <div className={`flex rounded-full p-1 border ${theme.toggleBg}`}>
-                          <button 
-                            onClick={() => setViewMode('routine')}
-                            className={`p-2 rounded-full transition-all ${viewMode === 'routine' ? 'bg-white shadow-sm text-[#2C3628] dark:text-black' : theme.inactiveToggle}`}
-                            title="Routine Checklist"
-                          >
+                          <button onClick={() => setViewMode('routine')} className={`p-2 rounded-full transition-all ${viewMode === 'routine' ? 'bg-white shadow-sm text-[#2C3628] dark:text-black' : theme.inactiveToggle}`}>
                               <List size={18} />
                           </button>
-                          <button 
-                            onClick={() => setViewMode('calendar')}
-                            className={`p-2 rounded-full transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-[#2C3628] dark:text-black' : theme.inactiveToggle}`}
-                            title="Calendar Checklist"
-                          >
+                          <button onClick={() => setViewMode('calendar')} className={`p-2 rounded-full transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-[#2C3628] dark:text-black' : theme.inactiveToggle}`}>
                               <CalendarDays size={18} />
                           </button>
                       </div>
 
                       {/* Theme Toggle */}
-                      <button 
-                          onClick={() => setIsDarkMode(!isDarkMode)}
-                          className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all ${theme.buttonGhost}`}
-                          title="Toggle Theme"
-                      >
+                      <button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all ${theme.buttonGhost}`}>
                           {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                       </button>
 
-                      {/* Progress Circle */}
-                      <button 
-                          onClick={() => setIsSettingsModalOpen(true)}
-                          className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all group shrink-0 ${theme.buttonGhost}`}
-                      >
+                      {/* Progress */}
+                      <button onClick={() => setIsSettingsModalOpen(true)} className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all group shrink-0 ${theme.buttonGhost}`}>
                         <span className={`font-sans font-bold text-xs md:text-sm group-hover:hidden ${theme.textPrimary}`}>{calculateProgress()}%</span>
                         <Settings size={20} className="hidden group-hover:block" />
                       </button>
@@ -317,13 +414,13 @@ const DashboardBotanical = () => {
               {viewMode === 'routine' && (
                   <div className={`flex justify-between items-center border-b pb-6 md:pb-8 overflow-x-auto no-scrollbar gap-3 mask-linear-fade animate-fade-in-up ${theme.border}`}>
                       {weekDays.map((dayObj) => {
-                          const hasActivity = dayObj.num < 25; 
+                          const isSelected = activeDate === dayObj.date;
                           return (
                           <button 
-                              key={dayObj.num}
-                              onClick={() => setActiveDay(dayObj.num)}
+                              key={dayObj.date}
+                              onClick={() => setActiveDate(dayObj.date)}
                               className={`flex flex-col items-center justify-center w-14 h-20 md:w-16 md:h-24 rounded-2xl transition-all shrink-0 relative ${
-                                  activeDay === dayObj.num
+                                  isSelected
                                   ? `${theme.buttonPrimary} shadow-lg scale-105 transform -translate-y-1` 
                                   : `${theme.cardBg} border ${theme.border} ${theme.textSecondary} hover:border-current`
                               }`}
@@ -332,7 +429,7 @@ const DashboardBotanical = () => {
                                   {dayObj.name.substring(0, 3)}
                               </span>
                               <span className="text-lg md:text-2xl font-serif">{dayObj.num}</span>
-                              {hasActivity && activeDay !== dayObj.num && (
+                              {dayObj.isToday && !isSelected && (
                                   <div className={`w-1 h-1 rounded-full absolute bottom-3 ${theme.accentBg}`}></div>
                               )}
                           </button>
@@ -343,8 +440,6 @@ const DashboardBotanical = () => {
 
           {/* CONTENT AREA */}
           <div className="relative z-10 flex-1 overflow-y-auto px-6 md:px-12 pb-12 scroll-smooth no-scrollbar">
-              
-              {/* --- DYNAMIC VIEW RENDERING --- */}
               {viewMode === 'routine' ? renderRoutineView() : renderCalendarView()}
 
               <button 
@@ -356,8 +451,9 @@ const DashboardBotanical = () => {
 
               {/* FOOTER */}
               <div className={`rounded-3xl p-6 md:p-8 border mb-6 ${theme.footerBg} ${theme.border}`}>
+                  {/* Weather/Mood */}
                   <div className={`flex flex-col gap-6 mb-8 border-b border-dashed pb-6 ${theme.borderDashed}`}>
-                      <h3 className={`font-sans text-xs font-bold uppercase ${theme.textSecondary}`}>Daily Weather</h3>
+                      <h3 className={`font-sans text-xs font-bold uppercase ${theme.textSecondary}`}>Daily Mood</h3>
                       <div className="flex justify-between sm:justify-start sm:gap-4">
                           {[
                               {id: 'sun', icon: <Sun size={20}/>}, 
@@ -366,9 +462,9 @@ const DashboardBotanical = () => {
                           ].map((m) => (
                               <button 
                                   key={m.id}
-                                  onClick={() => setSelectedMood(m.id)}
+                                  onClick={() => updateDailyLog('mood', m.id)}
                                   className={`transition-all p-3 rounded-xl border ${
-                                      selectedMood === m.id 
+                                      dailyLog.mood === m.id 
                                       ? `${theme.cardBg} ${theme.border} ${theme.textPrimary} shadow-sm` 
                                       : `${theme.textMuted} border-transparent hover:bg-black/5`
                                   }`}
@@ -378,16 +474,18 @@ const DashboardBotanical = () => {
                           ))}
                       </div>
                   </div>
+                  {/* Gratitude */}
                   <div>
                       <h3 className={`font-sans text-xs font-bold uppercase mb-3 ${theme.textSecondary}`}>Gratitude</h3>
                       <div className="relative">
                           <input 
                               type="text"
-                              value={gratitude}
-                              onChange={(e) => setGratitude(e.target.value)}
+                              value={dailyLog.gratitude || ''}
+                              onChange={(e) => updateDailyLog('gratitude', e.target.value)}
                               className={`w-full rounded-xl border text-base py-3 px-4 focus:outline-none placeholder:opacity-50 transition-colors shadow-sm ${theme.cardBg} ${theme.border} ${theme.textPrimary}`}
+                              placeholder=" "
                           />
-                          {!gratitude && (
+                          {(!dailyLog.gratitude) && (
                               <span className={`absolute top-3.5 left-4 pointer-events-none font-serif italic text-sm ${theme.textMuted}`}>
                                   One small thing...
                               </span>
@@ -424,18 +522,24 @@ const DashboardBotanical = () => {
 
 // --- SUB-COMPONENTS ---
 
-// 1. HabitCalendarCard
-const HabitCalendarCard = ({ habit, activeDay, onToggleHistory, theme }) => {
+const HabitCalendarCard = ({ habit, activeDate, onToggleHistory, theme }) => {
+    // history is 14 items. Index 13 = activeDate.
     const history = habit.history || Array(14).fill(0);
-    const last7Days = history.slice(-7);
-    const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-    // Calculate streak
+    const last7Days = history.slice(-7); // Get last 7 days ending on activeDate
+    
+    // Calculate streak based on full history provided (14 days)
     let streak = 0;
     for (let i = history.length - 1; i >= 0; i--) {
         if (history[i] === 1) streak++;
         else break;
     }
+
+    // Helper to get letter for day (M, T, W...)
+    const getDayLetter = (offsetFromActive) => {
+        const d = new Date(activeDate);
+        d.setDate(d.getDate() - offsetFromActive);
+        return d.toLocaleDateString('en-US', { weekday: 'narrow' });
+    };
 
     return (
         <div className={`p-5 rounded-3xl border hover:shadow-sm transition-all duration-300 flex flex-col md:flex-row gap-6 md:items-center ${theme.cardBg} ${theme.border} ${theme.cardHover}`}>
@@ -456,16 +560,26 @@ const HabitCalendarCard = ({ habit, activeDay, onToggleHistory, theme }) => {
             <div className="flex-1 overflow-x-auto no-scrollbar">
                 <div className="flex gap-2 min-w-max pb-1 justify-between md:justify-end">
                     {last7Days.map((val, i) => {
-                        const daysAgo = 6 - i;
-                        const dateNum = activeDay - daysAgo;
-                        const dayIndex = (2 - daysAgo + 7) % 7; // Mock logic for Tue
-                        const isToday = i === 6;
+                        // i=0 (oldest of the 7) ... i=6 (activeDate)
+                        // In history array, i=6 corresponds to history[13]
+                        // History index needed for toggle: history.length - 7 + i
+                        // Or simplify: The history array passed is 14 long. 
+                        // We are displaying indices 7 to 13.
+                        // So correct index to toggle = 7 + i.
+                        const historyIndex = 7 + i;
+                        
+                        // Calculate Date Number to display
+                        const daysAgo = 6 - i; // 6 days ago ... 0 days ago
+                        const d = new Date(activeDate);
+                        d.setDate(d.getDate() - daysAgo);
+                        const dateNum = d.getDate();
+                        const isToday = formatDate(d) === formatDate(new Date());
 
                         return (
                             <div key={i} className="flex flex-col items-center gap-2">
-                                <span className={`text-[9px] font-sans font-bold ${theme.textMuted}`}>{daysOfWeek[dayIndex]}</span>
+                                <span className={`text-[9px] font-sans font-bold ${theme.textMuted}`}>{getDayLetter(daysAgo)}</span>
                                 <button 
-                                    onClick={() => onToggleHistory(i)}
+                                    onClick={() => onToggleHistory(historyIndex)}
                                     className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-serif transition-all duration-200 ${
                                         val 
                                         ? `${theme.buttonPrimary} shadow-sm` 
@@ -474,7 +588,7 @@ const HabitCalendarCard = ({ habit, activeDay, onToggleHistory, theme }) => {
                                             : `${theme.inputBg} ${theme.textMuted} hover:bg-black/5`
                                     }`}
                                 >
-                                    {dateNum > 0 ? dateNum : 30 + dateNum}
+                                    {dateNum}
                                 </button>
                             </div>
                         );
@@ -485,7 +599,7 @@ const HabitCalendarCard = ({ habit, activeDay, onToggleHistory, theme }) => {
     );
 };
 
-// 2. Generic Modal
+// Generic Modal (Unchanged logic, just ensure theme prop is passed)
 const Modal = ({ isOpen, onClose, title, children, theme }) => {
     if (!isOpen) return null;
     return (
@@ -506,7 +620,7 @@ const Modal = ({ isOpen, onClose, title, children, theme }) => {
     );
 };
 
-// 3. Add Habit Form (Passes Theme)
+// Add Habit Form
 const AddHabitForm = ({ onSubmit, onCancel, theme }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -516,14 +630,22 @@ const AddHabitForm = ({ onSubmit, onCancel, theme }) => {
     const [routineType, setRoutineType] = useState('Daily');
     const [icon, setIcon] = useState('sun');
 
+    // Mappers
     const periods = [{ id: 'morning', label: 'Morning' }, { id: 'afternoon', label: 'Afternoon' }, { id: 'evening', label: 'Evening' }];
-    const routineTypes = ['Daily', 'Weekly', 'One-time'];
     const icons = [{ id: 'sun' }, { id: 'moon' }, { id: 'book' }, { id: 'coffee' }, { id: 'drop' }, { id: 'leaf' }];
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if(!title) return;
-        onSubmit({ title, description, time: time || (isTimeMode ? "09:00" : "30 mins"), isTimeMode, period, routineType, icon });
+        onSubmit({ 
+            title, 
+            description, 
+            time: time || (isTimeMode ? "09:00" : "30 mins"), 
+            isTimeMode, 
+            period, 
+            routineType, 
+            icon 
+        });
     };
 
     return (
@@ -536,7 +658,26 @@ const AddHabitForm = ({ onSubmit, onCancel, theme }) => {
                 <label className={`flex items-center gap-2 font-sans text-xs font-bold uppercase mb-2 ${theme.textSecondary}`}><AlignLeft size={12} /> Notes</label>
                 <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Details..." rows={2} className={`w-full border rounded-xl px-4 py-3 font-serif text-sm focus:outline-none resize-none ${theme.inputBg} ${theme.border} ${theme.textPrimary}`} />
             </div>
-            {/* ... Other inputs use similar theme classes ... */}
+            
+            <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className={`block font-sans text-xs font-bold uppercase mb-2 ${theme.textSecondary}`}>Time of Day</label>
+                    <select value={period} onChange={e => setPeriod(e.target.value)} className={`w-full border rounded-xl px-4 py-3 font-serif text-sm focus:outline-none ${theme.inputBg} ${theme.border} ${theme.textPrimary}`}>
+                        {periods.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                    </select>
+                </div>
+                 <div>
+                    <label className={`block font-sans text-xs font-bold uppercase mb-2 ${theme.textSecondary}`}>Icon</label>
+                    <div className="flex gap-2">
+                        {icons.slice(0, 3).map(i => (
+                            <button type="button" key={i.id} onClick={() => setIcon(i.id)} className={`flex-1 h-10 rounded-lg flex items-center justify-center border transition-all ${icon === i.id ? `${theme.buttonPrimary}` : `${theme.border}`}`}>
+                                <HabitIcon name={i.id} size={16} />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             <div className="pt-6 flex gap-4 mt-auto">
                 <button type="button" onClick={onCancel} className={`flex-1 py-3 rounded-xl border font-sans text-sm font-bold ${theme.border} ${theme.textSecondary} hover:bg-black/5`}>Cancel</button>
                 <button type="submit" className={`flex-1 py-3 rounded-xl font-sans text-sm font-bold hover:opacity-90 shadow-lg ${theme.buttonPrimary}`}>Save Routine</button>
@@ -545,7 +686,6 @@ const AddHabitForm = ({ onSubmit, onCancel, theme }) => {
     );
 };
 
-// 4. Icon Mapper
 const HabitIcon = ({ name, size }) => {
     switch(name) {
         case 'sun': return <Sun size={size} />;
@@ -557,11 +697,23 @@ const HabitIcon = ({ name, size }) => {
     }
 };
 
-// 5. Routine Habit Card (Passes Theme)
-const HabitCard = ({ habit, expanded, onExpand, onComplete, onSkip, onDelete, theme }) => {
+const HabitCard = ({ habit, expanded, onExpand, onComplete, onSkip, onDelete, onUpdateNote, theme }) => {
     const isSkipped = habit.status === 'skipped';
     const isCompleted = habit.status === 'completed';
     const displayTime = habit.time; 
+    
+    // Local state for note to avoid jitter, parent handles debounce save
+    const [noteText, setNoteText] = useState(habit.note || '');
+
+    // Sync noteText if habit prop changes externally (e.g. fresh fetch)
+    useEffect(() => {
+        setNoteText(habit.note || '');
+    }, [habit.note]);
+
+    const handleNoteChange = (e) => {
+        setNoteText(e.target.value);
+        onUpdateNote(e.target.value);
+    };
 
     return (
         <div 
@@ -620,13 +772,19 @@ const HabitCard = ({ habit, expanded, onExpand, onComplete, onSkip, onDelete, th
 
             {/* Details Drawer */}
             <div 
-                className={`transition-all duration-500 ease-in-out ${expanded ? 'max-h-60 opacity-100 mt-5' : 'max-h-0 opacity-0'}`}
+                className={`transition-all duration-500 ease-in-out cursor-default ${expanded ? 'max-h-60 opacity-100 mt-5' : 'max-h-0 opacity-0'}`}
                 onClick={(e) => e.stopPropagation()}
             >
                  {habit.description && (
                      <div className={`mb-3 px-1 text-sm font-serif italic ${theme.textSecondary}`}>"{habit.description}"</div>
                  )}
-                 <textarea placeholder="Add a daily note..." className={`w-full rounded-xl text-sm placeholder:opacity-50 font-sans focus:outline-none resize-none p-3 mb-3 border border-transparent focus:border-current transition-colors ${theme.inputBg} ${theme.textPrimary}`} rows={2} defaultValue={habit.note} />
+                 <textarea 
+                    value={noteText}
+                    onChange={handleNoteChange}
+                    placeholder="Add a daily note..." 
+                    className={`w-full rounded-xl text-sm placeholder:opacity-50 font-sans focus:outline-none resize-none p-3 mb-3 border border-transparent focus:border-current transition-colors ${theme.inputBg} ${theme.textPrimary}`} 
+                    rows={2} 
+                 />
                 <div className="flex justify-end">
                     <button onClick={onDelete} className={`flex items-center gap-2 text-[10px] font-sans font-bold uppercase hover:text-red-400 transition-colors px-2 py-1 ${theme.textMuted}`}>
                         <Trash2 size={12} /> Remove
