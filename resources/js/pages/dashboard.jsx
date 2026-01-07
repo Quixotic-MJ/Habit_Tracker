@@ -65,19 +65,21 @@ const DashboardBotanical = () => {
     fetchDashboard(activeDate);
   }, [activeDate]);
 
-  const fetchDashboard = async (date) => {
+ const fetchDashboard = async (date) => {
     try {
-        // In a real app, ensure you have auth headers configured in axios defaults
         const response = await axios.get(`/dashboard?date=${date}`);
         const { habits, dailyLog, settings } = response.data;
         
         setHabits(habits);
         setDailyLog(dailyLog);
-        setSettings(settings); // If you use settings later
-        setIsLoading(false);
+        setSettings(settings);
+        
+        // REMOVE THIS LINE:
+        // setIsLoading(false); 
     } catch (error) {
         console.error("Failed to fetch dashboard:", error);
-        setIsLoading(false);
+        // REMOVE THIS LINE:
+        // setIsLoading(false);
     }
   };
 
@@ -369,7 +371,7 @@ const DashboardBotanical = () => {
                           {viewMode === 'routine' ? new Date(activeDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "Consistency Overview"}
                       </span>
                       <h1 className={`text-3xl sm:text-4xl md:text-5xl leading-tight font-medium ${theme.textPrimary}`}>
-                          {viewMode === 'routine' ? headerTitle : "Last 14 Days"}
+                          {viewMode === 'routine' ? headerTitle : "Last 7 Days"}
                       </h1>
                   </div>
                   
@@ -720,7 +722,7 @@ const HabitCard = ({ habit, expanded, onExpand, onComplete, onSkip, onDelete, on
             onClick={onExpand}
             className={`group relative p-5 md:p-6 rounded-2xl border transition-all duration-500 cursor-pointer overflow-hidden ${
                 isCompleted 
-                ? 'bg-[#F4F6F4] dark:bg-[#2c2f2b]/50 border-transparent opacity-60' 
+                ? 'bg-[#EFF1EE] dark:bg-[#232622] border-[#E0E2DF] dark:border-[#363a34] shadow-inner' // "Pressed" paper look
                 : isSkipped 
                     ? `bg-transparent border border-dashed ${theme.border} opacity-60`
                     : `${theme.cardBg} ${theme.border} ${theme.cardHover} shadow-sm hover:-translate-y-1`
@@ -729,13 +731,17 @@ const HabitCard = ({ habit, expanded, onExpand, onComplete, onSkip, onDelete, on
             <div className="flex items-center justify-between w-full relative z-10">
                 <div className="flex items-center gap-4 md:gap-5 flex-1 min-w-0">
                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                        isCompleted ? `${theme.accentBg} ${theme.accentText}` : `${theme.inputBg} ${theme.textSecondary}`
+                        isCompleted 
+                            ? 'bg-[#DCE3DA] text-[#6B7C68]' // Muted Sage Icon Bg
+                            : `${theme.inputBg} ${theme.textSecondary}`
                     }`}>
                         <HabitIcon name={habit.icon} size={20} />
                     </div>
                     <div className="min-w-0 flex-1">
                         <h3 className={`text-lg md:text-xl transition-colors font-medium truncate ${
-                            isCompleted ? `${theme.textSecondary} line-through` : theme.textPrimary
+                            isCompleted 
+                                ? 'text-[#8A9A85] line-through decoration-[#8A9A85]/50' // Sage text with strikethrough
+                                : theme.textPrimary
                         }`}>
                             {habit.title}
                         </h3>
@@ -760,12 +766,12 @@ const HabitCard = ({ habit, expanded, onExpand, onComplete, onSkip, onDelete, on
                     </button>
                     <div 
                         onClick={(e) => { e.stopPropagation(); onComplete(); }}
-                        className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${
+                        className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all duration-300 ${
                         isCompleted 
-                        ? `${theme.buttonPrimary} border-transparent` 
-                        : `border-transparent text-transparent group-hover:${theme.border}`
+                        ? 'bg-[#8A9A85] border-[#8A9A85] text-white scale-105 shadow-sm' // Solid Sage Button
+                        : `border-[#E6E4DC] dark:border-[#363a34] text-transparent group-hover:border-[#8A9A85] group-hover:text-[#8A9A85]/30`
                     }`}>
-                        {isCompleted && <Check size={16} />}
+                        {isCompleted && <Check size={16} strokeWidth={3} />}
                     </div>
                 </div>
             </div>
